@@ -49,8 +49,8 @@ cmake --build . -j$(nproc)
 ## Download and Unpack the Data and Model
 
 ```bash
-tar -xJvf demos.tar.gz
-tar -xJvf models.tar.gz
+tar -zxf demos.tar.gz
+tar -zxf models.tar.gz
 ```
 
 ## Quick Start
