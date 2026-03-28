@@ -116,7 +116,7 @@ transcribe_result Qwen3ASR::transcribe_internal(const float * samples, int n_sam
         fprintf(stderr, "Audio features: [%d, %d]\n", n_audio_frames, text_hparams.hidden_size);
     }
     
-    std::vector<int32_t> input_tokens = build_input_tokens(n_audio_frames, params.language);
+    std::vector<int32_t> input_tokens = build_input_tokens(n_audio_frames, params.language, params.context);
     
     if (params.print_progress) {
         fprintf(stderr, "Input tokens: %zu\n", input_tokens.size());
@@ -149,7 +149,8 @@ transcribe_result Qwen3ASR::transcribe_internal(const float * samples, int n_sam
 }
 
 std::vector<int32_t> Qwen3ASR::build_input_tokens(int32_t n_audio_frames,
-                                                   const std::string & language) {
+                                                   const std::string & language,
+                                                   const std::string & context) {
     const auto & cfg = decoder_.get_config();
     
     std::vector<int32_t> tokens;
@@ -192,6 +193,12 @@ std::vector<int32_t> Qwen3ASR::build_input_tokens(int32_t n_audio_frames,
     }
     tokens.push_back(cfg.audio_end_token_id);
     
+    // Optional context hint text
+    if (!context.empty()) {
+        std::vector<int32_t> ctx_tokens = decoder_.encode_text(context);
+        tokens.insert(tokens.end(), ctx_tokens.begin(), ctx_tokens.end());
+    }
+
     // <|im_end|>\n<|im_start|>assistant\n
     tokens.push_back(im_end);
     tokens.push_back(newline);

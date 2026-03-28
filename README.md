@@ -64,6 +64,9 @@ Transcribe audio files to text:
 
 # Multi-threaded processing
 ./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-f16.gguf -f audio.wav -t 8
+
+# Add hotword/context hints to bias decoding
+./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-f16.gguf -f audio.wav -c "Qwen3 ASR, GGUF, hotword"
 ```
 
 ### 2. Forced Alignment
