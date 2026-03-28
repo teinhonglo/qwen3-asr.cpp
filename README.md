@@ -39,6 +39,7 @@ cd ggml
 mkdir build && cd build
 cmake ..
 cmake --build . --config Release -j 8
+cd ../../
 
 # Build
 mkdir -p build && cd build
