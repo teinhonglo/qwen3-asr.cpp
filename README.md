@@ -5,8 +5,6 @@ A high-performance C++ implementation of Qwen3-ASR and Qwen3-ForcedAligner using
 ## Features
 
 - **Automatic Speech Recognition (ASR)**: Transcribe audio files to text in 30+ languages
-- **Forced Alignment**: Align reference text to audio with word-level timestamps
-- **Combined Pipeline** (`--transcribe-align`): Automatically runs ASR then alignment with auto language detection
 - **Flash Attention**: Uses `ggml_flash_attn_ext()` for fast decoding (3.7x speedup)
 - **Metal GPU Acceleration**: Optimized for Apple Silicon with dual CPU+Metal backend
 - **Accelerate/vDSP**: Highly optimized mel spectrogram computation (45x speedup)
@@ -33,7 +31,7 @@ A high-performance C++ implementation of Qwen3-ASR and Qwen3-ForcedAligner using
 
 ```bash
 # Clone the repository with submodules
-git clone --recursive https://github.com/predict-woo/qwen3-asr.cpp.git
+git clone --recursive https://github.com/teinhonglo/qwen3-asr.cpp.git
 cd qwen3-asr.cpp
 
 # Build
