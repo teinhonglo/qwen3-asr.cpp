@@ -1,6 +1,6 @@
 # Qwen3-ASR.cpp
 
-A high-performance C++ implementation of Qwen3-ASR and Qwen3-ForcedAligner using the GGML tensor library. Optimized for Apple Silicon with Metal GPU acceleration, providing fast speech recognition and word-level timestamp alignment.
+A high-performance C++ implementation of Qwen3-SLU using the GGML tensor library. Optimized for Apple Silicon with Metal GPU acceleration, providing fast speech recognition and word-level timestamp alignment.
 
 ## Features
 
@@ -83,16 +83,6 @@ prompt="你是一个专业的车载系统自然语言理解（NLU）专家。\n�
 # Output Formats
 # language None离离原上草这首诗你会背吗<slu>[]
 ```
-
-### Key Optimizations
-
-- **Flash Attention** (`ggml_flash_attn_ext`): 3.7x decode speedup vs. standard attention
-- **Metal GPU Dual Backend**: Automatic scheduling between CPU and GPU for optimal performance
-- **mmap + Zero-Copy GPU Transfer**: Fast model loading via `ggml_backend_dev_buffer_from_host_ptr`
-- **F16 KV Cache**: Half-precision key-value cache reduces memory bandwidth
-- **Selective Logits**: Only compute last token logits for lm_head (saves computation)
-- **Weight Tying**: token_embd = output weight (saves memory)
-- **vDSP/Accelerate Mel**: 45x speedup for mel spectrogram computation on Apple platforms
 
 ## Audio Requirements
 
