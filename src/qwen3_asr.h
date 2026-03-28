@@ -18,6 +18,9 @@ struct transcribe_params {
     
     // Language code (optional, for prompting)
     std::string language = "";
+
+    // Optional textual context / hotwords to bias transcription
+    std::string context = "";
     
     // Number of threads for mel computation
     int32_t n_threads = 4;
@@ -87,7 +90,8 @@ private:
     
     // Build input token sequence for audio
     std::vector<int32_t> build_input_tokens(int32_t n_audio_frames, 
-                                             const std::string & language);
+                                             const std::string & language,
+                                             const std::string & context);
     
     // Greedy decoding loop
     bool decode_greedy(const std::vector<int32_t> & input_tokens,

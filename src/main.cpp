@@ -17,6 +17,7 @@ struct cli_params {
     std::string audio_path = "";
     std::string output_path = "";
     std::string language = "";
+    std::string context = "";
     std::string align_text = "";
     int32_t max_tokens = 1024;
     int32_t n_threads = 4;
@@ -36,6 +37,7 @@ static void print_usage(const char * prog) {
     fprintf(stderr, "  -f, --audio <path>     Path to audio file (WAV, 16kHz mono) [required]\n");
     fprintf(stderr, "  -o, --output <path>    Output file path (default: stdout)\n");
     fprintf(stderr, "  -l, --language <code>  Language code (optional, e.g. 'korean' for Korean word splitting)\n");
+    fprintf(stderr, "  -c, --context <text>   Optional context/hotwords prompt for ASR\n");
     fprintf(stderr, "  -t, --threads <n>      Number of threads (default: 4)\n");
     fprintf(stderr, "  --max-tokens <n>       Maximum tokens to generate (default: 1024)\n");
     fprintf(stderr, "  --progress             Print progress during transcription\n");
@@ -92,6 +94,12 @@ static bool parse_args(int argc, char ** argv, cli_params & params) {
                 return false;
             }
             params.language = argv[++i];
+        } else if (strcmp(arg, "-c") == 0 || strcmp(arg, "--context") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: %s requires an argument\n", arg);
+                return false;
+            }
+            params.context = argv[++i];
         } else if (strcmp(arg, "-t") == 0 || strcmp(arg, "--threads") == 0) {
             if (i + 1 >= argc) {
                 fprintf(stderr, "Error: %s requires an argument\n", arg);
@@ -363,6 +371,9 @@ static int run_transcription(const cli_params & params) {
     fprintf(stderr, "  Model: %s\n", params.model_path.c_str());
     fprintf(stderr, "  Audio: %s\n", params.audio_path.c_str());
     fprintf(stderr, "  Threads: %d\n", params.n_threads);
+    if (!params.context.empty()) {
+        fprintf(stderr, "  Context: %s\n", params.context.c_str());
+    }
     fprintf(stderr, "\n");
     
     qwen3_asr::Qwen3ASR asr;
@@ -375,6 +386,7 @@ static int run_transcription(const cli_params & params) {
     qwen3_asr::transcribe_params tp;
     tp.max_tokens = params.max_tokens;
     tp.language = params.language;
+    tp.context = params.context;
     tp.n_threads = params.n_threads;
     tp.print_progress = params.print_progress;
     tp.print_timing = params.print_timing;
@@ -419,6 +431,9 @@ static int run_transcribe_and_align(const cli_params & params) {
     fprintf(stderr, "  Aligner Model: %s\n", params.aligner_model_path.c_str());
     fprintf(stderr, "  Audio: %s\n", params.audio_path.c_str());
     fprintf(stderr, "  Threads: %d\n", params.n_threads);
+    if (!params.context.empty()) {
+        fprintf(stderr, "  Context: %s\n", params.context.c_str());
+    }
     fprintf(stderr, "\n");
 
     fprintf(stderr, "--- Phase 1: Transcription ---\n");
@@ -431,6 +446,7 @@ static int run_transcribe_and_align(const cli_params & params) {
     qwen3_asr::transcribe_params tp;
     tp.max_tokens = params.max_tokens;
     tp.language = params.language;
+    tp.context = params.context;
     tp.n_threads = params.n_threads;
     tp.print_progress = params.print_progress;
     tp.print_timing = params.print_timing;
