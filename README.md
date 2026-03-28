@@ -12,7 +12,6 @@ A high-performance C++ implementation of Qwen3-ASR and Qwen3-ForcedAligner using
 - **Accelerate/vDSP**: Highly optimized mel spectrogram computation (45x speedup)
 - **mmap Weight Loading**: Zero-copy GPU transfer for fast model initialization
 - **F16 KV Cache**: Reduced memory bandwidth with half-precision key-value cache
-- **Korean Word Splitting**: Soynlp LTokenizer algorithm with 18K-word dictionary
 - **Quantization Support**: Q8_0 quantization for reduced memory usage (~40% smaller)
 - **Pure C++17**: No Python runtime required for inference
 
@@ -20,9 +19,8 @@ A high-performance C++ implementation of Qwen3-ASR and Qwen3-ForcedAligner using
 
 | Model | Size | Description |
 |-------|------|-------------|
-| `qwen3-asr-0.6b-f16.gguf` | ~1.8 GB | ASR model, F16 precision |
-| `qwen3-asr-0.6b-q8_0.gguf` | ~1.3 GB | ASR model, Q8_0 quantized |
-| `qwen3-forced-aligner-0.6b-f16.gguf` | ~1.8 GB | Forced alignment model |
+| `qwen3-asr-0.6b-asr-slu-f16.gguf` | ~1.8 GB | ASR-SLU model, F16 precision |
+| `qwen3-asr-0.6b-asr-slu-q8_0.gguf` | ~1.3 GB | ASR-SLU model, Q8_0 quantized |
 
 ## Requirements
 
@@ -39,108 +37,43 @@ git clone --recursive https://github.com/predict-woo/qwen3-asr.cpp.git
 cd qwen3-asr.cpp
 
 # Build
+cd ggml
+mkdir build && cd build
+cmake ..
+cmake --build . --config Release -j 8
+
+# Build
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . -j$(sysctl -n hw.ncpu)
+cmake --build . -j$(nproc)
 ```
+## Download and Unpack the Data and Model
 
-On Linux, replace `$(sysctl -n hw.ncpu)` with `$(nproc)`.
+```bash
+tar -xJvf demos.tar.gz
+tar -xJvf models.tar.gz
+```
 
 ## Quick Start
 
-### 1. Transcription (ASR)
+### 1. Transcription (SLU)
 
 Transcribe audio files to text:
 
 ```bash
-# Basic transcription
-./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-f16.gguf -f audio.wav
+# Add context instruction to bias decoding
+prompt="你是一个专业的车载系统自然语言理解（NLU）专家。\n你的任务是基于用户的查询（Query），同时完成两项任务：\n1.  意图识别 (Intent Classification): 识别出查询中包含的所有领域（Domain）和意图（Intent）。\n2.  槽位填充 (Slot Filling): 抽取出与每个意图相关的槽位（Slot）和槽位值（Value）。\n\n你需要严格遵循以下规则：\n1.  识别多个语义帧: 用户的单次查询可能包含多个独立的意图。你需要为每一个意图生成一个对应的语义结构。\n2.  输出格式: 你的输出必须是一个严格的 JSON List (列表)。\n3.  列表中的每一个 JSON 对象都必须包含且只包含这三个欄位：\"domain\"、\"intent\"、\"slots\"。\n4.  \"slots\" 必须是 JSON object；若该意图无槽位，請輸出空物件 {}。\n5.  如果没有匹配到任何领域和意图，请返回空列表 []。\n6.  最终回答中除了 JSON，不要包含其他文字。\n\n输出格式范例：\n- 单一语义帧：\n[{\"domain\":\"地图\",\"intent\":\"导航\",\"slots\":{\"终点目标\":\"广州塔\"}}]\n\n- 多语义帧：\n[\n  {\"domain\":\"地图\",\"intent\":\"导航\",\"slots\":{\"终点目标\":\"公司\"}},\n  {\"domain\":\"音乐\",\"intent\":\"播放音乐\",\"slots\":{\"歌曲名\":\"夜曲\"}}\n]\n\n- 无槽位：\n[{\"domain\":\"播放控制\",\"intent\":\"播放控制\",\"slots\":{}}]\n\n- 无匹配：\n[]\n"
 
-# With quantized model (faster, less memory)
-./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-q8_0.gguf -f audio.wav
+./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-asr-slu-f16.gguf -f demos/id_26.wav -c "$prompt"
 
-# Save output to file
-./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-f16.gguf -f audio.wav -o transcript.txt
+# Output Formats
+language None打开座椅通风打开座椅按摩<slu>[{"domain": "车载控制", "intent": "车身控制", "slots": {"操作": "打开", "对象": "座椅", "对象功能": "通风"}}, {"domain": "车载控制", "intent": "车身控制", "slots": {"操作": "打开", "对象": "座椅", "对象功能": "按摩"}}]
 
-# Multi-threaded processing
-./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-f16.gguf -f audio.wav -t 8
+./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-asr-slu-f16.gguf -f demos/id_19252.wav -c "$prompt"
 
-# Add hotword/context hints to bias decoding
-./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-f16.gguf -f audio.wav -c "Qwen3 ASR, GGUF, hotword"
+# Output Formats
+language None离离原上草这首诗你会背吗<slu>[]
 ```
-
-### 2. Forced Alignment
-
-Align reference text to audio with word-level timestamps:
-
-```bash
-# Basic alignment
-./build/qwen3-asr-cli \
-  -m models/qwen3-forced-aligner-0.6b-f16.gguf \
-  -f audio.wav \
-  --align \
-  --text "transcript text" \
-  --lang korean
-
-# Save alignment to JSON file
-./build/qwen3-asr-cli \
-  -m models/qwen3-forced-aligner-0.6b-f16.gguf \
-  -f audio.wav \
-  --align \
-  --text "Hello world" \
-  -o alignment.json
-```
-
-### 3. Combined Pipeline (Transcribe + Align)
-
-Automatically transcribe and then align the result (recommended):
-
-```bash
-./build/qwen3-asr-cli \
-  -m models/qwen3-asr-0.6b-f16.gguf \
-  --aligner-model models/qwen3-forced-aligner-0.6b-f16.gguf \
-  -f audio.wav \
-  --transcribe-align
-```
-
-This mode automatically:
-- Runs ASR to get the transcript
-- Detects the language from the ASR output
-- Runs forced alignment with the detected language
-- Outputs word-level timestamps as JSON
-
-### Output Formats
-
-**Transcription** outputs plain text:
-```
-language Korean 안녕하세요 여러분 오늘은...
-```
-
-**Forced Alignment** outputs JSON with word-level timestamps:
-```json
-{
-  "words": [
-    {"word": "안녕하세요", "start": 0.000, "end": 0.480},
-    {"word": "여러분", "start": 0.480, "end": 0.880},
-    {"word": "오늘은", "start": 0.880, "end": 1.200}
-  ]
-}
-```
-
-## Performance
-
-Benchmark on 92-second Korean audio, Apple M2 Pro (10-core CPU, 16-core GPU):
-
-| Stage | Time |
-|-------|------|
-| Mel spectrogram | 98 ms |
-| Audio encoding | 715 ms |
-| Text decoding (323 tokens) | 4,194 ms |
-| **ASR Total** | **5,007 ms** |
-| Forced alignment (183 words) | 12,998 ms |
-| **Combined Total** | **18,005 ms** |
-
-**Memory Usage:** ~247 MB RSS, ~294 MB Metal
 
 ### Key Optimizations
 
@@ -151,56 +84,6 @@ Benchmark on 92-second Korean audio, Apple M2 Pro (10-core CPU, 16-core GPU):
 - **Selective Logits**: Only compute last token logits for lm_head (saves computation)
 - **Weight Tying**: token_embd = output weight (saves memory)
 - **vDSP/Accelerate Mel**: 45x speedup for mel spectrogram computation on Apple platforms
-- **Korean Word Splitting**: Soynlp LTokenizer port with bundled 18K-word dictionary
-
-## Model Conversion
-
-Convert HuggingFace models to GGUF format:
-
-```bash
-# Install dependencies
-pip install -r scripts/requirements.txt
-
-# Convert ASR model (F16)
-python scripts/convert_hf_to_gguf.py \
-    --input /path/to/Qwen3-ASR-0.6B \
-    --output models/qwen3-asr-0.6b-f16.gguf \
-    --type f16
-
-# Convert ASR model (Q8_0 quantized)
-python scripts/convert_hf_to_gguf.py \
-    --input /path/to/Qwen3-ASR-0.6B \
-    --output models/qwen3-asr-0.6b-q8_0.gguf \
-    --type q8_0
-
-# Convert ForcedAligner model
-python scripts/convert_hf_to_gguf.py \
-    --input /path/to/Qwen3-ForcedAligner-0.6B \
-    --output models/qwen3-forced-aligner-0.6b-f16.gguf \
-    --type f16
-```
-
-## Supported Languages
-
-The model supports 30+ languages:
-
-| Language | Code | Language | Code |
-|----------|------|----------|------|
-| Chinese (Mandarin) | zh | English | en |
-| Cantonese | yue | Japanese | ja |
-| Korean | ko | German | de |
-| French | fr | Spanish | es |
-| Italian | it | Portuguese | pt |
-| Russian | ru | Arabic | ar |
-| Hindi | hi | Thai | th |
-| Vietnamese | vi | Indonesian | id |
-| Malay | ms | Turkish | tr |
-| Polish | pl | Dutch | nl |
-| Swedish | sv | Norwegian | no |
-| Danish | da | Finnish | fi |
-| Greek | el | Czech | cs |
-| Hungarian | hu | Romanian | ro |
-| Ukrainian | uk | Hebrew | he |
 
 ## Audio Requirements
 
