@@ -34,24 +34,24 @@ A high-performance C++ implementation of Qwen3-SLU using the GGML tensor library
 git clone --recursive https://github.com/teinhonglo/qwen3-asr.cpp.git
 cd qwen3-asr.cpp
 
-# Build
+# Build ggml
 cd ggml
 mkdir build && cd build
 cmake ..
 cmake --build . --config Release -j 8
 cd ../../
 
-# Build
+# Build qwen3-asr.cpp
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . -j$(nproc)
+cmake --build . -j8
 cd ../
 ```
 ## Download and Unpack the Data and Model
 
 ```bash
-tar -zxf demos.tar.gz
-tar -zxf models.tar.gz
+tar -zxf demos_and_models.tar.gz
+cp demos/path.sh .
 ```
 
 ## Quick Start
@@ -64,24 +64,24 @@ Transcribe audio files to text:
 
 ```bash
 # Add context instruction to bias decoding
-prompt="你是一个专业的车载系统自然语言理解（NLU）专家。\n你的任务是基于用户的查询（Query），同时完成两项任务：\n1.  意图识别 (Intent Classification): 识别出查询中包含的所有领域（Domain）和意图（Intent）。\n2.  槽位填充 (Slot Filling): 抽取出与每个意图相关的槽位（Slot）和槽位值（Value）。\n\n你需要严格遵循以下规则：\n1.  识别多个语义帧: 用户的单次查询可能包含多个独立的意图。你需要为每一个意图生成一个对应的语义结构。\n2.  输出格式: 你的输出必须是一个严格的 JSON List (列表)。\n3.  列表中的每一个 JSON 对象都必须包含且只包含这三个欄位：\"domain\"、\"intent\"、\"slots\"。\n4.  \"slots\" 必须是 JSON object；若该意图无槽位，請輸出空物件 {}。\n5.  如果没有匹配到任何领域和意图，请返回空列表 []。\n6.  最终回答中除了 JSON，不要包含其他文字。\n\n输出格式范例：\n- 单一语义帧：\n[{\"domain\":\"地图\",\"intent\":\"导航\",\"slots\":{\"终点目标\":\"广州塔\"}}]\n\n- 多语义帧：\n[\n  {\"domain\":\"地图\",\"intent\":\"导航\",\"slots\":{\"终点目标\":\"公司\"}},\n  {\"domain\":\"音乐\",\"intent\":\"播放音乐\",\"slots\":{\"歌曲名\":\"夜曲\"}}\n]\n\n- 无槽位：\n[{\"domain\":\"播放控制\",\"intent\":\"播放控制\",\"slots\":{}}]\n\n- 无匹配：\n[]\n"
+. ./path.sh
 
 ./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-asr-slu-f16.gguf -f demos/id_26.wav -c "$prompt"
 
 # Output Formats
-# language None打开座椅通风打开座椅按摩<slu>[{"domain": "车载控制", "intent": "车身控制", "slots": {"操作": "打开", "对象": "座椅", "对象功能": "通风"}}, {"domain": "车载控制", "intent": "车身控制", "slots": {"操作": "打开", "对象": "座椅", "对象功能": "按摩"}}]
+# language None{"asr_text": "打开座椅通风打开座椅按摩", "semantics": "[{\"domain\": \"车载控制\", \"intent\": \"车身控制\", \"slots\": {\"操作\": \"打开\", \"对象\": \"座椅\", \"对象功能\": \"通风\"}}, {\"domain\": \"车载控制\", \"intent\": \"车身控制\", \"slots\": {\"操作\": \"打开\", \"对象\": \"座椅\", \"对象功能\": \"按摩\"}}]"}
 ```
 
 #### Example 2: No matched intent
 
 ```bash
 # Add context instruction to bias decoding
-prompt="你是一个专业的车载系统自然语言理解（NLU）专家。\n你的任务是基于用户的查询（Query），同时完成两项任务：\n1.  意图识别 (Intent Classification): 识别出查询中包含的所有领域（Domain）和意图（Intent）。\n2.  槽位填充 (Slot Filling): 抽取出与每个意图相关的槽位（Slot）和槽位值（Value）。\n\n你需要严格遵循以下规则：\n1.  识别多个语义帧: 用户的单次查询可能包含多个独立的意图。你需要为每一个意图生成一个对应的语义结构。\n2.  输出格式: 你的输出必须是一个严格的 JSON List (列表)。\n3.  列表中的每一个 JSON 对象都必须包含且只包含这三个欄位：\"domain\"、\"intent\"、\"slots\"。\n4.  \"slots\" 必须是 JSON object；若该意图无槽位，請輸出空物件 {}。\n5.  如果没有匹配到任何领域和意图，请返回空列表 []。\n6.  最终回答中除了 JSON，不要包含其他文字。\n\n输出格式范例：\n- 单一语义帧：\n[{\"domain\":\"地图\",\"intent\":\"导航\",\"slots\":{\"终点目标\":\"广州塔\"}}]\n\n- 多语义帧：\n[\n  {\"domain\":\"地图\",\"intent\":\"导航\",\"slots\":{\"终点目标\":\"公司\"}},\n  {\"domain\":\"音乐\",\"intent\":\"播放音乐\",\"slots\":{\"歌曲名\":\"夜曲\"}}\n]\n\n- 无槽位：\n[{\"domain\":\"播放控制\",\"intent\":\"播放控制\",\"slots\":{}}]\n\n- 无匹配：\n[]\n"
+. ./path.sh
 
 ./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-asr-slu-f16.gguf -f demos/id_19152.wav -c "$prompt"
 
 # Output Formats
-# language None离离原上草这首诗你会背吗<slu>[]
+# language None{"asr_text": "离离原上草这首诗你会背吗", "semantics": "[]"}
 ```
 
 ## Audio Requirements
@@ -103,10 +103,12 @@ Build with timing instrumentation to see detailed breakdowns:
 ```bash
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DQWEN3_ASR_TIMING=ON
-cmake --build . -j$(sysctl -n hw.ncpu)
+cmake --build . -j 8
+cd ../
+. ./path.sh
 
 # Run with --profile flag
-./qwen3-asr-cli -m models/qwen3-asr-0.6b-asr-slu-f16.gguf -f sample.wav --profile
+./build/qwen3-asr-cli -m models/qwen3-asr-0.6b-asr-slu-f16.gguf -f demos/id_26.wav -c "$prompt" --profile
 ```
 
 For production builds, omit `-DQWEN3_ASR_TIMING=ON` to remove timing overhead.
